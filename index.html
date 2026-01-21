@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>パスワードジェネレーター</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Password Generator</h1>
+
+        <div class="card">
+            <h2>パスワード生成</h2>
+
+            <div class="password-display" id="passwordDisplay">
+                生成ボタンを押してください
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" id="generateBtn">生成</button>
+                <button class="btn btn-secondary" id="copyBtn">コピー</button>
+                <button class="btn btn-secondary" id="saveBtn">保存</button>
+            </div>
+
+            <div class="length-control">
+                <label>パスワードの長さ</label>
+                <input type="range" id="lengthSlider" min="4" max="64" value="16">
+                <div class="length-value" id="lengthValue">16</div>
+            </div>
+
+            <div class="options">
+                <div class="option">
+                    <input type="checkbox" id="useLower" checked>
+                    <label for="useLower">小文字 (a-z)</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="useUpper" checked>
+                    <label for="useUpper">大文字 (A-Z)</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="useDigits" checked>
+                    <label for="useDigits">数字 (0-9)</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="useSymbols" checked>
+                    <label for="useSymbols">記号 (!#$%...)</label>
+                </div>
+                <div class="option">
+                    <input type="checkbox" id="excludeAmbiguous">
+                    <label for="excludeAmbiguous">紛らわしい文字を除外</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>保存したパスワード履歴</h2>
+            <div class="history-list" id="historyList">
+                <div class="empty-history">履歴がありません</div>
+            </div>
+            <button class="btn btn-danger" id="clearHistoryBtn" style="width: 100%; margin-top: 10px;">履歴をすべて削除</button>
+        </div>
+
+        <div class="storage-info">
+            データはブラウザのローカルストレージに保存されます
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
