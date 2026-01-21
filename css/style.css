@@ -37,6 +37,41 @@ h1 {
     font-size: 1.2rem;
 }
 
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.card-header h2 {
+    margin-bottom: 0;
+}
+
+.btn-toggle {
+    flex: none;
+    padding: 0;
+    font-size: 1.2rem;
+    background: transparent;
+    color: #999;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    line-height: 1;
+}
+
+.btn-toggle:hover {
+    color: #333;
+}
+
+.history-list.hidden {
+    display: none;
+}
+
+.history-buttons.hidden {
+    display: none;
+}
+
 .password-display {
     background: #f5f5f5;
     border: 2px solid #e0e0e0;

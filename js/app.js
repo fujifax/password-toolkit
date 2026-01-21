@@ -26,8 +26,11 @@ const toast = document.getElementById('toast');
 const strengthBar = document.getElementById('strengthBar');
 const strengthLabel = document.getElementById('strengthLabel');
 const strengthDetails = document.getElementById('strengthDetails');
+const toggleHistoryBtn = document.getElementById('toggleHistoryBtn');
+const historyButtons = document.querySelector('.history-buttons');
 
 let currentPassword = '';
+let historyVisible = true;
 
 // ユーティリティ関数
 function showToast(message) {
@@ -197,7 +200,8 @@ function saveSettings() {
         upper: useUpper.checked,
         digits: useDigits.checked,
         symbols: useSymbols.checked,
-        exclude: excludeAmbiguous.checked
+        exclude: excludeAmbiguous.checked,
+        historyVisible: historyVisible
     };
     try {
         localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
@@ -474,6 +478,17 @@ importFile.addEventListener('change', (e) => {
     }
 });
 
+// 履歴表示/非表示切り替え
+function toggleHistoryVisibility() {
+    historyVisible = !historyVisible;
+    historyList.classList.toggle('hidden', !historyVisible);
+    historyButtons.classList.toggle('hidden', !historyVisible);
+    toggleHistoryBtn.textContent = historyVisible ? '▲' : '▼';
+    saveSettings();
+}
+
+toggleHistoryBtn.addEventListener('click', toggleHistoryVisibility);
+
 // 初期化
 function init() {
     // 設定の復元
@@ -486,6 +501,12 @@ function init() {
         useDigits.checked = settings.digits !== false;
         useSymbols.checked = settings.symbols !== false;
         excludeAmbiguous.checked = settings.exclude || false;
+
+        // 履歴表示状態の復元
+        historyVisible = settings.historyVisible !== false;
+        historyList.classList.toggle('hidden', !historyVisible);
+        historyButtons.classList.toggle('hidden', !historyVisible);
+        toggleHistoryBtn.textContent = historyVisible ? '▲' : '▼';
     }
 
     // 履歴の表示
