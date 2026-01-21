@@ -53,6 +53,74 @@ h1 {
     justify-content: center;
 }
 
+.strength-meter {
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.strength-bar {
+    height: 100%;
+    width: 0;
+    border-radius: 4px;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.strength-bar.weak {
+    background: #ff5252;
+    width: 25%;
+}
+
+.strength-bar.fair {
+    background: #ffa726;
+    width: 50%;
+}
+
+.strength-bar.good {
+    background: #66bb6a;
+    width: 75%;
+}
+
+.strength-bar.strong {
+    background: #26a69a;
+    width: 100%;
+}
+
+.strength-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+}
+
+.strength-label {
+    font-weight: bold;
+}
+
+.strength-label.weak {
+    color: #ff5252;
+}
+
+.strength-label.fair {
+    color: #ffa726;
+}
+
+.strength-label.good {
+    color: #66bb6a;
+}
+
+.strength-label.strong {
+    color: #26a69a;
+}
+
+.strength-details {
+    color: #888;
+    font-size: 0.8rem;
+}
+
 .btn-group {
     display: flex;
     gap: 10px;

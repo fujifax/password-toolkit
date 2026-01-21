@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Generator - テスト</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; margin-bottom: 20px; }
+        .test-suite {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-suite h2 {
+            margin: 0 0 15px 0;
+            color: #555;
+            font-size: 1.1rem;
+        }
+        .test-result {
+            padding: 8px 12px;
+            margin: 4px 0;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .test-result.pass {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .test-result.fail {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .summary {
+            background: #333;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+        }
+        .summary.all-pass { background: #2e7d32; }
+        .summary.has-fail { background: #c62828; }
+    </style>
+</head>
+<body>
+    <h1>Password Generator テスト結果</h1>
+    <div id="results"></div>
+    <div id="summary" class="summary"></div>
+
+    <script>
+        // テスト対象の関数をコピー（モジュール化されていないため）
+        const AMBIGUOUS = new Set("0O1lI|`'\" ,.;:");
+        const SYMBOLS = "!#$%&()*+,-./:;<=>?@[]^_{|}~";
+
+        function secureRandom(max) {
+            const array = new Uint32Array(1);
+            crypto.getRandomValues(array);
+            return array[0] % max;
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = secureRandom(i + 1);
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function buildCharset(options) {
+            const pools = [];
+            let lower = 'abcdefghijklmnopqrstuvwxyz';
+            let upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            let digits = '0123456789';
+            let symbols = SYMBOLS;
+
+            if (options.excludeAmbiguous) {
+                lower = [...lower].filter(c => !AMBIGUOUS.has(c)).join('');
+                upper = [...upper].filter(c => !AMBIGUOUS.has(c)).join('');
+                digits = [...digits].filter(c => !AMBIGUOUS.has(c)).join('');
+                symbols = [...symbols].filter(c => !AMBIGUOUS.has(c)).join('');
+            }
+
+            if (options.useLower && lower) pools.push(lower);
+            if (options.useUpper && upper) pools.push(upper);
+            if (options.useDigits && digits) pools.push(digits);
+            if (options.useSymbols && symbols) pools.push(symbols);
+
+            return pools;
+        }
+
+        function generatePassword(length, pools) {
+            if (pools.length === 0) return null;
+            if (length < pools.length) return null;
+
+            let chars = pools.map(pool => pool[secureRandom(pool.length)]);
+            const allChars = pools.join('');
+            for (let i = chars.length; i < length; i++) {
+                chars.push(allChars[secureRandom(allChars.length)]);
+            }
+            shuffleArray(chars);
+            return chars.join('');
+        }
+
+        function calculateStrength(password) {
+            if (!password) {
+                return { score: 0, level: 'none', label: '-', entropy: 0 };
+            }
+
+            let charsetSize = 0;
+            if (/[a-z]/.test(password)) charsetSize += 26;
+            if (/[A-Z]/.test(password)) charsetSize += 26;
+            if (/[0-9]/.test(password)) charsetSize += 10;
+            if (/[^a-zA-Z0-9]/.test(password)) charsetSize += 32;
+
+            const entropy = password.length * Math.log2(charsetSize || 1);
+
+            let score, level, label;
+            if (entropy < 28) {
+                score = 1; level = 'weak'; label = '弱い';
+            } else if (entropy < 36) {
+                score = 2; level = 'fair'; label = 'やや弱い';
+            } else if (entropy < 60) {
+                score = 3; level = 'good'; label = '良好';
+            } else {
+                score = 4; level = 'strong'; label = '強い';
+            }
+
+            return { score, level, label, entropy: Math.round(entropy) };
+        }
+
+        // テストフレームワーク
+        let testResults = [];
+
+        function test(name, fn) {
+            try {
+                fn();
+                testResults.push({ name, pass: true });
+            } catch (e) {
+                testResults.push({ name, pass: false, error: e.message });
+            }
+        }
+
+        function expect(actual) {
+            return {
+                toBe(expected) {
+                    if (actual !== expected) {
+                        throw new Error(`Expected ${expected}, but got ${actual}`);
+                    }
+                },
+                toBeGreaterThan(expected) {
+                    if (!(actual > expected)) {
+                        throw new Error(`Expected ${actual} to be greater than ${expected}`);
+                    }
+                },
+                toBeGreaterThanOrEqual(expected) {
+                    if (!(actual >= expected)) {
+                        throw new Error(`Expected ${actual} to be >= ${expected}`);
+                    }
+                },
+                toBeLessThan(expected) {
+                    if (!(actual < expected)) {
+                        throw new Error(`Expected ${actual} to be less than ${expected}`);
+                    }
+                },
+                toBeNull() {
+                    if (actual !== null) {
+                        throw new Error(`Expected null, but got ${actual}`);
+                    }
+                },
+                toContain(expected) {
+                    if (!actual.includes(expected)) {
+                        throw new Error(`Expected "${actual}" to contain "${expected}"`);
+                    }
+                },
+                toMatch(regex) {
+                    if (!regex.test(actual)) {
+                        throw new Error(`Expected "${actual}" to match ${regex}`);
+                    }
+                },
+                notToMatch(regex) {
+                    if (regex.test(actual)) {
+                        throw new Error(`Expected "${actual}" not to match ${regex}`);
+                    }
+                },
+                toHaveLength(expected) {
+                    if (actual.length !== expected) {
+                        throw new Error(`Expected length ${expected}, but got ${actual.length}`);
+                    }
+                }
+            };
+        }
+
+        // テストスイート
+        function runTests() {
+            // パスワード生成テスト
+            test('指定した長さのパスワードが生成される', () => {
+                const pools = buildCharset({ useLower: true, useUpper: true, useDigits: true, useSymbols: true });
+                const password = generatePassword(16, pools);
+                expect(password.length).toBe(16);
+            });
+
+            test('長さ8のパスワードが正しく生成される', () => {
+                const pools = buildCharset({ useLower: true, useUpper: true, useDigits: true, useSymbols: true });
+                const password = generatePassword(8, pools);
+                expect(password.length).toBe(8);
+            });
+
+            test('長さ64のパスワードが正しく生成される', () => {
+                const pools = buildCharset({ useLower: true, useUpper: true, useDigits: true, useSymbols: true });
+                const password = generatePassword(64, pools);
+                expect(password.length).toBe(64);
+            });
+
+            test('小文字のみのパスワードが生成できる', () => {
+                const pools = buildCharset({ useLower: true, useUpper: false, useDigits: false, useSymbols: false });
+                const password = generatePassword(10, pools);
+                expect(password).toMatch(/^[a-z]+$/);
+            });
+
+            test('大文字のみのパスワードが生成できる', () => {
+                const pools = buildCharset({ useLower: false, useUpper: true, useDigits: false, useSymbols: false });
+                const password = generatePassword(10, pools);
+                expect(password).toMatch(/^[A-Z]+$/);
+            });
+
+            test('数字のみのパスワードが生成できる', () => {
+                const pools = buildCharset({ useLower: false, useUpper: false, useDigits: true, useSymbols: false });
+                const password = generatePassword(10, pools);
+                expect(password).toMatch(/^[0-9]+$/);
+            });
+
+            test('記号のみのパスワードが生成できる', () => {
+                const pools = buildCharset({ useLower: false, useUpper: false, useDigits: false, useSymbols: true });
+                const password = generatePassword(10, pools);
+                expect(password).toMatch(/^[^a-zA-Z0-9]+$/);
+            });
+
+            test('全文字種を含むパスワードが生成できる', () => {
+                const pools = buildCharset({ useLower: true, useUpper: true, useDigits: true, useSymbols: true });
+                // 複数回試行して少なくとも1回は全種類含むことを確認
+                let hasAll = false;
+                for (let i = 0; i < 10; i++) {
+                    const password = generatePassword(20, pools);
+                    if (/[a-z]/.test(password) && /[A-Z]/.test(password) &&
+                        /[0-9]/.test(password) && /[^a-zA-Z0-9]/.test(password)) {
+                        hasAll = true;
+                        break;
+                    }
+                }
+                expect(hasAll).toBe(true);
+            });
+
+            test('紛らわしい文字を除外できる', () => {
+                const pools = buildCharset({ useLower: true, useUpper: true, useDigits: true, useSymbols: true, excludeAmbiguous: true });
+                for (let i = 0; i < 10; i++) {
+                    const password = generatePassword(30, pools);
+                    expect(password).notToMatch(/[0O1lI|`'" ,.;:]/);
+                }
+            });
+
+            test('文字種が選択されていない場合はnullを返す', () => {
+                const pools = buildCharset({ useLower: false, useUpper: false, useDigits: false, useSymbols: false });
+                const password = generatePassword(10, pools);
+                expect(password).toBeNull();
+            });
+
+            test('長さがプール数より短い場合はnullを返す', () => {
+                const pools = buildCharset({ useLower: true, useUpper: true, useDigits: true, useSymbols: true });
+                const password = generatePassword(2, pools); // 4種類あるのに長さ2
+                expect(password).toBeNull();
+            });
+
+            // パスワード強度テスト
+            test('空パスワードの強度は"none"', () => {
+                const strength = calculateStrength('');
+                expect(strength.level).toBe('none');
+            });
+
+            test('短いパスワードは"weak"', () => {
+                const strength = calculateStrength('abc');
+                expect(strength.level).toBe('weak');
+            });
+
+            test('中程度のパスワードは"fair"または"good"', () => {
+                const strength = calculateStrength('Abc123');
+                expect(strength.score).toBeGreaterThanOrEqual(2);
+            });
+
+            test('長く複雑なパスワードは"strong"', () => {
+                const strength = calculateStrength('Abc123!@#XyzQwe456');
+                expect(strength.level).toBe('strong');
+            });
+
+            test('エントロピーが正しく計算される', () => {
+                const strength = calculateStrength('aaaa'); // 4文字、26種類
+                // log2(26) * 4 ≈ 18.8
+                expect(strength.entropy).toBeGreaterThan(15);
+                expect(strength.entropy).toBeLessThan(25);
+            });
+
+            test('文字種が増えるとエントロピーが上がる', () => {
+                const lowerOnly = calculateStrength('abcdefgh');
+                const mixed = calculateStrength('aBcD1234');
+                expect(mixed.entropy).toBeGreaterThan(lowerOnly.entropy);
+            });
+
+            // ローカルストレージテスト
+            test('ローカルストレージに保存・読み込みできる', () => {
+                const key = 'test_password_history';
+                const data = [{ pw: 'test123', memo: 'test', ts: new Date().toISOString() }];
+                localStorage.setItem(key, JSON.stringify(data));
+                const loaded = JSON.parse(localStorage.getItem(key));
+                expect(loaded[0].pw).toBe('test123');
+                localStorage.removeItem(key);
+            });
+
+            // 結果表示
+            displayResults();
+        }
+
+        function displayResults() {
+            const resultsDiv = document.getElementById('results');
+            const summaryDiv = document.getElementById('summary');
+
+            // グループ化
+            const groups = {
+                'パスワード生成': testResults.filter(t =>
+                    t.name.includes('パスワード') || t.name.includes('文字') || t.name.includes('長さ')),
+                'パスワード強度': testResults.filter(t =>
+                    t.name.includes('強度') || t.name.includes('エントロピー') || t.name.includes('weak') ||
+                    t.name.includes('strong') || t.name.includes('fair') || t.name.includes('none')),
+                'ストレージ': testResults.filter(t => t.name.includes('ストレージ'))
+            };
+
+            let html = '';
+            for (const [groupName, tests] of Object.entries(groups)) {
+                if (tests.length === 0) continue;
+                html += `<div class="test-suite"><h2>${groupName}</h2>`;
+                for (const t of tests) {
+                    const icon = t.pass ? '✓' : '✗';
+                    const cls = t.pass ? 'pass' : 'fail';
+                    const error = t.error ? ` - ${t.error}` : '';
+                    html += `<div class="test-result ${cls}">${icon} ${t.name}${error}</div>`;
+                }
+                html += '</div>';
+            }
+            resultsDiv.innerHTML = html;
+
+            const passed = testResults.filter(t => t.pass).length;
+            const total = testResults.length;
+            const allPass = passed === total;
+            summaryDiv.className = `summary ${allPass ? 'all-pass' : 'has-fail'}`;
+            summaryDiv.textContent = `テスト結果: ${passed}/${total} 成功 ${allPass ? '✓ すべてのテストが成功しました' : '✗ 失敗したテストがあります'}`;
+        }
+
+        // 実行
+        runTests();
+    </script>
+</body>
+</html>

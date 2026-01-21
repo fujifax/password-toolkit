@@ -20,6 +20,9 @@ const excludeAmbiguous = document.getElementById('excludeAmbiguous');
 const historyList = document.getElementById('historyList');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 const toast = document.getElementById('toast');
+const strengthBar = document.getElementById('strengthBar');
+const strengthLabel = document.getElementById('strengthLabel');
+const strengthDetails = document.getElementById('strengthDetails');
 
 let currentPassword = '';
 
@@ -93,6 +96,68 @@ function generatePassword() {
     // シャッフル
     shuffleArray(chars);
     return chars.join('');
+}
+
+// パスワード強度計算
+function calculateStrength(password) {
+    if (!password) {
+        return { score: 0, level: 'none', label: '-', entropy: 0 };
+    }
+
+    let charsetSize = 0;
+    if (/[a-z]/.test(password)) charsetSize += 26;
+    if (/[A-Z]/.test(password)) charsetSize += 26;
+    if (/[0-9]/.test(password)) charsetSize += 10;
+    if (/[^a-zA-Z0-9]/.test(password)) charsetSize += 32;
+
+    // エントロピー計算: log2(charsetSize^length)
+    const entropy = password.length * Math.log2(charsetSize || 1);
+
+    // スコア判定
+    let score, level, label;
+    if (entropy < 28) {
+        score = 1;
+        level = 'weak';
+        label = '弱い';
+    } else if (entropy < 36) {
+        score = 2;
+        level = 'fair';
+        label = 'やや弱い';
+    } else if (entropy < 60) {
+        score = 3;
+        level = 'good';
+        label = '良好';
+    } else {
+        score = 4;
+        level = 'strong';
+        label = '強い';
+    }
+
+    return { score, level, label, entropy: Math.round(entropy) };
+}
+
+function updateStrengthDisplay(password) {
+    const strength = calculateStrength(password);
+
+    // バーの更新
+    strengthBar.className = 'strength-bar';
+    if (strength.level !== 'none') {
+        strengthBar.classList.add(strength.level);
+    }
+
+    // ラベルの更新
+    strengthLabel.textContent = strength.label;
+    strengthLabel.className = 'strength-label';
+    if (strength.level !== 'none') {
+        strengthLabel.classList.add(strength.level);
+    }
+
+    // 詳細情報
+    if (password) {
+        strengthDetails.textContent = `${password.length}文字 / エントロピー: ${strength.entropy}bit`;
+    } else {
+        strengthDetails.textContent = '';
+    }
 }
 
 // ローカルストレージ操作
@@ -249,6 +314,7 @@ generateBtn.addEventListener('click', () => {
     if (password) {
         currentPassword = password;
         passwordDisplay.textContent = password;
+        updateStrengthDisplay(password);
         saveSettings();
     }
 });
