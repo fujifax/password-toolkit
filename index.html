@@ -66,7 +66,12 @@
             <div class="history-list" id="historyList">
                 <div class="empty-history">履歴がありません</div>
             </div>
-            <button class="btn btn-danger" id="clearHistoryBtn" style="width: 100%; margin-top: 10px;">履歴をすべて削除</button>
+            <div class="history-buttons">
+                <button class="btn btn-secondary" id="exportBtn">エクスポート</button>
+                <button class="btn btn-secondary" id="importBtn">インポート</button>
+                <button class="btn btn-danger" id="clearHistoryBtn">全削除</button>
+            </div>
+            <input type="file" id="importFile" accept=".json" style="display: none;">
         </div>
 
         <div class="storage-info">

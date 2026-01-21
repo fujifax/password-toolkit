@@ -19,6 +19,9 @@ const useSymbols = document.getElementById('useSymbols');
 const excludeAmbiguous = document.getElementById('excludeAmbiguous');
 const historyList = document.getElementById('historyList');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const importFile = document.getElementById('importFile');
 const toast = document.getElementById('toast');
 const strengthBar = document.getElementById('strengthBar');
 const strengthLabel = document.getElementById('strengthLabel');
@@ -308,6 +311,113 @@ function clearHistory() {
     }
 }
 
+// エクスポート/インポート
+function exportData() {
+    const history = loadHistory();
+    const settings = loadSettings();
+
+    const exportObj = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        history: history,
+        settings: settings
+    };
+
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `password-toolkit-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast('エクスポートしました');
+}
+
+function importData(file) {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+
+            // バリデーション
+            if (!data.history || !Array.isArray(data.history)) {
+                showToast('無効なファイル形式です');
+                return;
+            }
+
+            // 履歴のバリデーション
+            const validHistory = data.history.filter(item =>
+                item && typeof item.pw === 'string' && item.pw.length > 0
+            );
+
+            if (validHistory.length === 0 && data.history.length > 0) {
+                showToast('有効なパスワードが見つかりませんでした');
+                return;
+            }
+
+            // インポート方法を確認
+            const currentHistory = loadHistory();
+            let importMode = 'replace';
+
+            if (currentHistory.length > 0) {
+                const choice = confirm(
+                    `現在${currentHistory.length}件の履歴があります。\n\n` +
+                    `OK: 既存データに追加（マージ）\n` +
+                    `キャンセル: 既存データを置き換え`
+                );
+                importMode = choice ? 'merge' : 'replace';
+            }
+
+            let newHistory;
+            if (importMode === 'merge') {
+                // マージ（重複除去）
+                const existingPws = new Set(currentHistory.map(h => h.pw));
+                const newItems = validHistory.filter(h => !existingPws.has(h.pw));
+                newHistory = [...currentHistory, ...newItems];
+            } else {
+                newHistory = validHistory;
+            }
+
+            // 最大件数制限
+            newHistory = newHistory.slice(0, MAX_HISTORY_ITEMS);
+
+            saveHistory(newHistory);
+
+            // 設定もインポート（存在する場合）
+            if (data.settings) {
+                localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(data.settings));
+                // 設定を画面に反映
+                const settings = data.settings;
+                lengthSlider.value = settings.length || 16;
+                lengthValue.textContent = lengthSlider.value;
+                useLower.checked = settings.lower !== false;
+                useUpper.checked = settings.upper !== false;
+                useDigits.checked = settings.digits !== false;
+                useSymbols.checked = settings.symbols !== false;
+                excludeAmbiguous.checked = settings.exclude || false;
+            }
+
+            renderHistory();
+            showToast(`${validHistory.length}件インポートしました`);
+
+        } catch (err) {
+            showToast('ファイルの読み込みに失敗しました');
+            console.error('Import error:', err);
+        }
+    };
+
+    reader.onerror = () => {
+        showToast('ファイルの読み込みに失敗しました');
+    };
+
+    reader.readAsText(file);
+}
+
 // イベントリスナー
 generateBtn.addEventListener('click', () => {
     const password = generatePassword();
@@ -349,6 +459,20 @@ useSymbols.addEventListener('change', saveSettings);
 excludeAmbiguous.addEventListener('change', saveSettings);
 
 clearHistoryBtn.addEventListener('click', clearHistory);
+
+exportBtn.addEventListener('click', exportData);
+
+importBtn.addEventListener('click', () => {
+    importFile.click();
+});
+
+importFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        importData(file);
+        importFile.value = ''; // リセット
+    }
+});
 
 // 初期化
 function init() {

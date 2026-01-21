@@ -321,3 +321,15 @@ h1 {
     color: #aaa;
     margin-top: 4px;
 }
+
+.history-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.history-buttons .btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 0.9rem;
+}

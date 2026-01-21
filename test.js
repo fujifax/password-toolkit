@@ -271,6 +271,130 @@ test('文字種が増えるとエントロピーが上がる', () => {
     expect(mixed.entropy).toBeGreaterThan(lowerOnly.entropy);
 });
 
+console.log('\n【エクスポート/インポート】');
+
+// エクスポートデータ生成関数
+function createExportData(history, settings) {
+    return {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        history: history,
+        settings: settings
+    };
+}
+
+// インポートバリデーション関数
+function validateImportData(data) {
+    if (!data.history || !Array.isArray(data.history)) {
+        return { valid: false, error: '無効なファイル形式です' };
+    }
+
+    const validHistory = data.history.filter(item =>
+        item && typeof item.pw === 'string' && item.pw.length > 0
+    );
+
+    return { valid: true, history: validHistory, settings: data.settings };
+}
+
+// マージ関数
+function mergeHistory(currentHistory, newHistory, maxItems = 20) {
+    const existingPws = new Set(currentHistory.map(h => h.pw));
+    const newItems = newHistory.filter(h => !existingPws.has(h.pw));
+    return [...currentHistory, ...newItems].slice(0, maxItems);
+}
+
+test('エクスポートデータが正しい形式で生成される', () => {
+    const history = [{ pw: 'test123', memo: 'テスト', ts: '2026-01-01T00:00:00Z' }];
+    const settings = { length: 16, lower: true, upper: true };
+    const exportData = createExportData(history, settings);
+
+    expect(exportData.version).toBe(1);
+    expect(typeof exportData.exportedAt).toBe('string');
+    expect(exportData.history.length).toBe(1);
+    expect(exportData.history[0].pw).toBe('test123');
+    expect(exportData.settings.length).toBe(16);
+});
+
+test('空の履歴でもエクスポートできる', () => {
+    const exportData = createExportData([], null);
+    expect(exportData.history.length).toBe(0);
+});
+
+test('有効なインポートデータを検証できる', () => {
+    const data = {
+        version: 1,
+        history: [{ pw: 'password1', memo: '', ts: '2026-01-01T00:00:00Z' }],
+        settings: { length: 20 }
+    };
+    const result = validateImportData(data);
+
+    expect(result.valid).toBe(true);
+    expect(result.history.length).toBe(1);
+});
+
+test('historyがないデータは無効', () => {
+    const data = { version: 1, settings: {} };
+    const result = validateImportData(data);
+
+    expect(result.valid).toBe(false);
+});
+
+test('historyが配列でないデータは無効', () => {
+    const data = { version: 1, history: 'invalid', settings: {} };
+    const result = validateImportData(data);
+
+    expect(result.valid).toBe(false);
+});
+
+test('空のパスワードはフィルタリングされる', () => {
+    const data = {
+        version: 1,
+        history: [
+            { pw: 'valid', memo: '', ts: '' },
+            { pw: '', memo: '', ts: '' },
+            { pw: 'also-valid', memo: '', ts: '' }
+        ]
+    };
+    const result = validateImportData(data);
+
+    expect(result.valid).toBe(true);
+    expect(result.history.length).toBe(2);
+});
+
+test('履歴のマージが正しく動作する', () => {
+    const current = [
+        { pw: 'existing1', memo: '', ts: '' },
+        { pw: 'existing2', memo: '', ts: '' }
+    ];
+    const newData = [
+        { pw: 'existing1', memo: '', ts: '' },  // 重複
+        { pw: 'new1', memo: '', ts: '' }
+    ];
+
+    const merged = mergeHistory(current, newData);
+
+    expect(merged.length).toBe(3);  // existing1, existing2, new1
+});
+
+test('マージ時に最大件数が制限される', () => {
+    const current = Array.from({ length: 15 }, (_, i) => ({ pw: `current${i}`, memo: '', ts: '' }));
+    const newData = Array.from({ length: 10 }, (_, i) => ({ pw: `new${i}`, memo: '', ts: '' }));
+
+    const merged = mergeHistory(current, newData, 20);
+
+    expect(merged.length).toBe(20);  // 最大20件
+});
+
+test('重複するパスワードはマージされない', () => {
+    const current = [{ pw: 'same', memo: 'old', ts: '' }];
+    const newData = [{ pw: 'same', memo: 'new', ts: '' }];
+
+    const merged = mergeHistory(current, newData);
+
+    expect(merged.length).toBe(1);
+    expect(merged[0].memo).toBe('old');  // 既存のデータが保持される
+});
+
 // 結果サマリー
 console.log('\n========================================');
 console.log(`  結果: ${passed}/${passed + failed} 成功`);
