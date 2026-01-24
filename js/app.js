@@ -28,9 +28,11 @@ const strengthLabel = document.getElementById('strengthLabel');
 const strengthDetails = document.getElementById('strengthDetails');
 const toggleHistoryBtn = document.getElementById('toggleHistoryBtn');
 const historyButtons = document.querySelector('.history-buttons');
+const themeToggleBtn = document.getElementById('themeToggleBtn');
 
 let currentPassword = '';
 let historyVisible = true;
+let darkMode = false;
 
 // ユーティリティ関数
 function showToast(message) {
@@ -201,7 +203,8 @@ function saveSettings() {
         digits: useDigits.checked,
         symbols: useSymbols.checked,
         exclude: excludeAmbiguous.checked,
-        historyVisible: historyVisible
+        historyVisible: historyVisible,
+        darkMode: darkMode
     };
     try {
         localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
@@ -489,6 +492,21 @@ function toggleHistoryVisibility() {
 
 toggleHistoryBtn.addEventListener('click', toggleHistoryVisibility);
 
+// ダークモード切り替え
+function applyTheme() {
+    document.body.classList.toggle('dark-mode', darkMode);
+    themeToggleBtn.textContent = darkMode ? '☀️' : '🌙';
+    themeToggleBtn.title = darkMode ? 'ライトモードに切り替え' : 'ダークモードに切り替え';
+}
+
+function toggleDarkMode() {
+    darkMode = !darkMode;
+    applyTheme();
+    saveSettings();
+}
+
+themeToggleBtn.addEventListener('click', toggleDarkMode);
+
 // 初期化
 function init() {
     // 設定の復元
@@ -507,6 +525,10 @@ function init() {
         historyList.classList.toggle('hidden', !historyVisible);
         historyButtons.classList.toggle('hidden', !historyVisible);
         toggleHistoryBtn.textContent = historyVisible ? '▲' : '▼';
+
+        // ダークモード設定の復元
+        darkMode = settings.darkMode || false;
+        applyTheme();
     }
 
     // 履歴の表示

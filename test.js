@@ -395,6 +395,60 @@ test('重複するパスワードはマージされない', () => {
     expect(merged[0].memo).toBe('old');  // 既存のデータが保持される
 });
 
+console.log('\n【設定（ダークモード含む）】');
+
+// 設定の構造テスト
+function createSettings(options = {}) {
+    return {
+        length: options.length || 16,
+        lower: options.lower !== false,
+        upper: options.upper !== false,
+        digits: options.digits !== false,
+        symbols: options.symbols !== false,
+        exclude: options.exclude || false,
+        historyVisible: options.historyVisible !== false,
+        darkMode: options.darkMode || false
+    };
+}
+
+test('デフォルト設定が正しく生成される', () => {
+    const settings = createSettings();
+    expect(settings.length).toBe(16);
+    expect(settings.lower).toBe(true);
+    expect(settings.upper).toBe(true);
+    expect(settings.digits).toBe(true);
+    expect(settings.symbols).toBe(true);
+    expect(settings.exclude).toBe(false);
+    expect(settings.historyVisible).toBe(true);
+    expect(settings.darkMode).toBe(false);
+});
+
+test('ダークモード設定がtrueに設定できる', () => {
+    const settings = createSettings({ darkMode: true });
+    expect(settings.darkMode).toBe(true);
+});
+
+test('ダークモード設定がfalseに設定できる', () => {
+    const settings = createSettings({ darkMode: false });
+    expect(settings.darkMode).toBe(false);
+});
+
+test('設定をJSONに変換して復元できる', () => {
+    const original = createSettings({ darkMode: true, length: 24, exclude: true });
+    const json = JSON.stringify(original);
+    const restored = JSON.parse(json);
+
+    expect(restored.darkMode).toBe(true);
+    expect(restored.length).toBe(24);
+    expect(restored.exclude).toBe(true);
+});
+
+test('設定に未定義のdarkModeがある場合はfalseとして扱う', () => {
+    const oldSettings = { length: 16, lower: true }; // darkModeなし
+    const darkMode = oldSettings.darkMode || false;
+    expect(darkMode).toBe(false);
+});
+
 // 結果サマリー
 console.log('\n========================================');
 console.log(`  結果: ${passed}/${passed + failed} 成功`);
