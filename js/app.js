@@ -83,12 +83,12 @@ function generatePassword() {
     const length = parseInt(lengthSlider.value);
 
     if (pools.length === 0) {
-        showToast('少なくとも1つの文字種を選択してください');
+        showToast(i18n.t('toastSelectCharType'));
         return null;
     }
 
     if (length < pools.length) {
-        showToast('パスワードの長さが短すぎます');
+        showToast(i18n.t('toastLengthTooShort'));
         return null;
     }
 
@@ -126,19 +126,19 @@ function calculateStrength(password) {
     if (entropy < 28) {
         score = 1;
         level = 'weak';
-        label = '弱い';
+        label = 'strengthWeak';
     } else if (entropy < 36) {
         score = 2;
         level = 'fair';
-        label = 'やや弱い';
+        label = 'strengthFair';
     } else if (entropy < 60) {
         score = 3;
         level = 'good';
-        label = '良好';
+        label = 'strengthGood';
     } else {
         score = 4;
         level = 'strong';
-        label = '強い';
+        label = 'strengthStrong';
     }
 
     return { score, level, label, entropy: Math.round(entropy) };
@@ -154,7 +154,7 @@ function updateStrengthDisplay(password) {
     }
 
     // ラベルの更新
-    strengthLabel.textContent = strength.label;
+    strengthLabel.textContent = strength.label === '-' ? '-' : i18n.t(strength.label);
     strengthLabel.className = 'strength-label';
     if (strength.level !== 'none') {
         strengthLabel.classList.add(strength.level);
@@ -162,7 +162,7 @@ function updateStrengthDisplay(password) {
 
     // 詳細情報
     if (password) {
-        strengthDetails.textContent = `${password.length}文字 / エントロピー: ${strength.entropy}bit`;
+        strengthDetails.textContent = i18n.t('strengthDetails', { length: password.length, entropy: strength.entropy });
     } else {
         strengthDetails.textContent = '';
     }
@@ -182,7 +182,7 @@ function saveHistory(history) {
     try {
         localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
     } catch (e) {
-        showToast('保存に失敗しました');
+        showToast(i18n.t('toastSaveFailed'));
     }
 }
 
@@ -218,7 +218,7 @@ function renderHistory() {
     const history = loadHistory();
 
     if (history.length === 0) {
-        historyList.innerHTML = '<div class="empty-history">履歴がありません</div>';
+        historyList.innerHTML = `<div class="empty-history">${i18n.t('emptyHistory')}</div>`;
         return;
     }
 
@@ -229,12 +229,12 @@ function renderHistory() {
             <div class="history-meta">
                 <div class="history-memo">
                     <input type="text"
-                           placeholder="メモを入力..."
+                           placeholder="${i18n.t('placeholderMemo')}"
                            value="${escapeHtml(item.memo || '')}"
                            onchange="updateMemo(${index}, this.value)">
                 </div>
                 <div class="history-actions">
-                    <button class="btn btn-secondary btn-small" onclick="copyHistoryItem(${index})">コピー</button>
+                    <button class="btn btn-secondary btn-small" onclick="copyHistoryItem(${index})">${i18n.t('btnCopy')}</button>
                 </div>
             </div>
             <div class="history-timestamp">
@@ -253,7 +253,7 @@ function escapeHtml(text) {
 function formatDate(isoString) {
     if (!isoString) return '';
     const date = new Date(isoString);
-    return date.toLocaleString('ja-JP');
+    return date.toLocaleString(i18n.locale);
 }
 
 // 履歴操作
@@ -262,7 +262,7 @@ function addToHistory(password) {
 
     // 重複チェック
     if (history.length > 0 && history[0].pw === password) {
-        showToast('同じパスワードが既に保存されています');
+        showToast(i18n.t('toastDuplicatePassword'));
         return false;
     }
 
@@ -279,7 +279,7 @@ function addToHistory(password) {
 
     saveHistory(history);
     renderHistory();
-    showToast('履歴に保存しました');
+    showToast(i18n.t('toastSavedToHistory'));
     return true;
 }
 
@@ -289,7 +289,7 @@ function deleteHistoryItem(index) {
         history.splice(index, 1);
         saveHistory(history);
         renderHistory();
-        showToast('削除しました');
+        showToast(i18n.t('toastDeleted'));
     }
 }
 
@@ -305,16 +305,16 @@ function copyHistoryItem(index) {
     const history = loadHistory();
     if (index >= 0 && index < history.length) {
         navigator.clipboard.writeText(history[index].pw)
-            .then(() => showToast('コピーしました'))
-            .catch(() => showToast('コピーに失敗しました'));
+            .then(() => showToast(i18n.t('toastCopied')))
+            .catch(() => showToast(i18n.t('toastCopyFailed')));
     }
 }
 
 function clearHistory() {
-    if (confirm('すべての履歴を削除しますか？')) {
+    if (confirm(i18n.t('confirmClearAll'))) {
         saveHistory([]);
         renderHistory();
-        showToast('履歴を削除しました');
+        showToast(i18n.t('toastHistoryCleared'));
     }
 }
 
@@ -341,7 +341,7 @@ function exportData() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    showToast('エクスポートしました');
+    showToast(i18n.t('toastExported'));
 }
 
 function importData(file) {
@@ -353,7 +353,7 @@ function importData(file) {
 
             // バリデーション
             if (!data.history || !Array.isArray(data.history)) {
-                showToast('無効なファイル形式です');
+                showToast(i18n.t('toastInvalidFile'));
                 return;
             }
 
@@ -363,7 +363,7 @@ function importData(file) {
             );
 
             if (validHistory.length === 0 && data.history.length > 0) {
-                showToast('有効なパスワードが見つかりませんでした');
+                showToast(i18n.t('toastNoValidPasswords'));
                 return;
             }
 
@@ -372,11 +372,7 @@ function importData(file) {
             let importMode = 'replace';
 
             if (currentHistory.length > 0) {
-                const choice = confirm(
-                    `現在${currentHistory.length}件の履歴があります。\n\n` +
-                    `OK: 既存データに追加（マージ）\n` +
-                    `キャンセル: 既存データを置き換え`
-                );
+                const choice = confirm(i18n.t('confirmImportMerge', { count: currentHistory.length }));
                 importMode = choice ? 'merge' : 'replace';
             }
 
@@ -410,16 +406,16 @@ function importData(file) {
             }
 
             renderHistory();
-            showToast(`${validHistory.length}件インポートしました`);
+            showToast(i18n.t('toastImported', { count: validHistory.length }));
 
         } catch (err) {
-            showToast('ファイルの読み込みに失敗しました');
+            showToast(i18n.t('toastFileReadFailed'));
             console.error('Import error:', err);
         }
     };
 
     reader.onerror = () => {
-        showToast('ファイルの読み込みに失敗しました');
+        showToast(i18n.t('toastFileReadFailed'));
     };
 
     reader.readAsText(file);
@@ -439,10 +435,10 @@ generateBtn.addEventListener('click', () => {
 copyBtn.addEventListener('click', () => {
     if (currentPassword) {
         navigator.clipboard.writeText(currentPassword)
-            .then(() => showToast('コピーしました'))
-            .catch(() => showToast('コピーに失敗しました'));
+            .then(() => showToast(i18n.t('toastCopied')))
+            .catch(() => showToast(i18n.t('toastCopyFailed')));
     } else {
-        showToast('パスワードを生成してください');
+        showToast(i18n.t('toastGenerateFirst'));
     }
 });
 
@@ -450,7 +446,7 @@ saveBtn.addEventListener('click', () => {
     if (currentPassword) {
         addToHistory(currentPassword);
     } else {
-        showToast('パスワードを生成してください');
+        showToast(i18n.t('toastGenerateFirst'));
     }
 });
 
@@ -496,7 +492,7 @@ toggleHistoryBtn.addEventListener('click', toggleHistoryVisibility);
 function applyTheme() {
     document.body.classList.toggle('dark-mode', darkMode);
     themeToggleBtn.textContent = darkMode ? '☀️' : '🌙';
-    themeToggleBtn.title = darkMode ? 'ライトモードに切り替え' : 'ダークモードに切り替え';
+    themeToggleBtn.title = darkMode ? i18n.t('themeToggleLight') : i18n.t('themeToggleDark');
 }
 
 function toggleDarkMode() {
@@ -506,6 +502,25 @@ function toggleDarkMode() {
 }
 
 themeToggleBtn.addEventListener('click', toggleDarkMode);
+
+// 言語切替
+document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        i18n.setLanguage(btn.dataset.lang);
+        onLanguageChange();
+    });
+});
+
+function onLanguageChange() {
+    if (!currentPassword) {
+        passwordDisplay.textContent = i18n.t('placeholderGenerate');
+    }
+    if (currentPassword) {
+        updateStrengthDisplay(currentPassword);
+    }
+    renderHistory();
+    applyTheme();
+}
 
 // 初期化
 function init() {
@@ -530,6 +545,9 @@ function init() {
         darkMode = settings.darkMode || false;
         applyTheme();
     }
+
+    // 翻訳済みプレースホルダーを設定
+    passwordDisplay.textContent = i18n.t('placeholderGenerate');
 
     // 履歴の表示
     renderHistory();
